@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>주식 브리핑</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262a33; --fg:#e6e8ec; --dim:#9aa3af;
+          --up:#22c55e; --down:#ef4444; --accent:#6366f1; }
+  * { box-sizing:border-box; -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+         line-height:1.65; }
+  .wrap { max-width:820px; margin:0 auto; padding:20px 16px 64px; }
+  #gate { min-height:88vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+  #gate h1 { font-size:20px; margin:0; font-weight:650; letter-spacing:-.2px; }
+  #gate p { color:var(--dim); font-size:13px; margin:0; text-align:center; }
+  #pin { width:220px; padding:14px 16px; font-size:22px; letter-spacing:6px; text-align:center;
+         background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:12px; }
+  #pin:focus { outline:none; border-color:var(--accent); }
+  button { padding:13px 30px; font-size:15px; font-weight:600; border:0; border-radius:12px;
+           background:var(--accent); color:#fff; cursor:pointer; }
+  button:disabled { opacity:.55; cursor:default; }
+  #err { color:var(--down); font-size:13px; min-height:18px; }
+  #report { display:none; }
+  #report h1 { font-size:21px; margin:.2em 0 .8em; letter-spacing:-.3px; }
+  #report h2 { font-size:16px; margin:1.9em 0 .6em; padding-bottom:.35em;
+               border-bottom:1px solid var(--line); }
+  #report table { width:100%; border-collapse:collapse; margin:.9em 0; font-size:13.5px;
+                  font-variant-numeric:tabular-nums; }
+  #report th, #report td { padding:8px 9px; border-bottom:1px solid var(--line); text-align:right; }
+  #report th:first-child, #report td:first-child { text-align:left; }
+  #report th { color:var(--dim); font-weight:600; font-size:12.5px; white-space:nowrap; }
+  #report blockquote { margin:.9em 0; padding:11px 14px; background:var(--card);
+                       border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+                       color:var(--dim); font-size:13.5px; }
+  #report code { background:var(--card); padding:1px 5px; border-radius:5px; font-size:.9em; }
+  #report ul, #report ol { padding-left:1.3em; }
+  #report li { margin:.3em 0; }
+  #report strong { font-weight:650; }
+  .tbl-scroll { overflow-x:auto; }
+  .meta { color:var(--dim); font-size:12px; margin-top:2.6em; padding-top:1em;
+          border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="gate">
+    <h1>🔒 주식 브리핑</h1>
+    <p>PIN을 입력하면 리포트가 열립니다.<br>이 페이지에는 암호문만 저장돼 있습니다.</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="····">
+    <button id="go">열기</button>
+    <div id="err"></div>
+  </div>
+  <div id="report"></div>
+</div>
+
+<script>
+const PAYLOAD = {"v":1,"kdf":{"name":"PBKDF2","hash":"SHA-256","iterations":600000,"salt":"KPplJWSODz5c7QVkc/fesw=="},"cipher":{"name":"AES-GCM","iv":"1guUOP8hxDwaDOQf","data":"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"},"generated_at":"2026-11-14 00:23 KST"};
+
+const $ = s => document.querySelector(s);
+const dec = new TextDecoder();
+const b2a = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+async function decrypt(pin) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin),
+                                             "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt:b2a(PAYLOAD.kdf.salt),
+      iterations:PAYLOAD.kdf.iterations, hash:PAYLOAD.kdf.hash },
+    base, { name:"AES-GCM", length:256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt(
+    { name:"AES-GCM", iv:b2a(PAYLOAD.cipher.iv) }, key, b2a(PAYLOAD.cipher.data));
+  return dec.decode(plain);
+}
+
+// 리포트에 쓰이는 문법만 처리하는 최소 마크다운 렌더러.
+// 외부 라이브러리를 쓰지 않는다 — CDN 의존을 만들면 오프라인·CSP에서 깨진다.
+function render(md) {
+  const esc = s => s.replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+
+  const out = [];
+  const lines = md.split("\n");
+  let i = 0;
+  while (i < lines.length) {
+    const ln = lines[i];
+
+    if (/^\s*\|/.test(ln) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i+1] || "")) {
+      const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      const head = cells(ln);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(cells(lines[i++]));
+      out.push('<div class="tbl-scroll"><table><thead><tr>'
+        + head.map(h => `<th>${inline(h)}</th>`).join("")
+        + "</tr></thead><tbody>"
+        + rows.map(r => "<tr>" + r.map(c => `<td>${inline(c)}</td>`).join("") + "</tr>").join("")
+        + "</tbody></table></div>");
+      continue;
+    }
+
+    let m;
+    if ((m = ln.match(/^(#{1,4})\s+(.*)$/))) {
+      out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
+    } else if (/^\s*>/.test(ln)) {
+      const buf = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
+      out.push(`<blockquote>${buf.map(inline).join("<br>")}</blockquote>`);
+      continue;
+    } else if (/^\s*(?:[-·*]|\d+\.)\s+/.test(ln)) {
+      const ordered = /^\s*\d+\./.test(ln);
+      const buf = [];
+      while (i < lines.length && /^\s*(?:[-·*]|\d+\.)\s+/.test(lines[i])) {
+        buf.push(lines[i++].replace(/^\s*(?:[-·*]|\d+\.)\s+/, ""));
+      }
+      const t = ordered ? "ol" : "ul";
+      out.push(`<${t}>` + buf.map(b => `<li>${inline(b)}</li>`).join("") + `</${t}>`);
+      continue;
+    } else if (/^\s*---+\s*$/.test(ln)) {
+      // 구분선은 h2 밑줄과 겹쳐 보이므로 버린다
+    } else if (ln.trim() === "") {
+      // 빈 줄 무시
+    } else {
+      out.push(`<p>${inline(ln)}</p>`);
+    }
+    i++;
+  }
+  return out.join("\n");
+}
+
+async function open_() {
+  const pin = $("#pin").value.trim();
+  if (!pin) return;
+  $("#go").disabled = true;
+  $("#err").textContent = "";
+  $("#go").textContent = "복호화 중…";
+  try {
+    const md = await decrypt(pin);
+    $("#report").innerHTML = render(md)
+      + `<div class="meta">생성 ${PAYLOAD.generated_at} · 이 페이지는 검색에 노출되지 않습니다</div>`;
+    $("#gate").style.display = "none";
+    $("#report").style.display = "block";
+  } catch (e) {
+    $("#err").textContent = "PIN이 맞지 않습니다.";
+    $("#pin").value = "";
+    $("#pin").focus();
+  } finally {
+    $("#go").disabled = false;
+    $("#go").textContent = "열기";
+  }
+}
+
+$("#go").addEventListener("click", open_);
+$("#pin").addEventListener("keydown", e => { if (e.key === "Enter") open_(); });
+$("#pin").focus();
+</script>
+</body>
+</html>
